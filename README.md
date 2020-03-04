@@ -1,7 +1,6 @@
 # DevLogDashboard
 
-<img alt="ok-dashboard"     width="300" src="img/dashboard-ok_50.jpg">
-<img alt="errors-dashboard" width="300" src="img/dashboard-errors_50.jpg">
+<img alt="ok-dashboard" width="300" src="img/dashboard-ok_50.jpg"><img alt="errors-dashboard" width="300" src="img/dashboard-with-errors_50.jpg">
 
 ## What is it
 A dashboard that shows log output and service state, typically when in a development environment.
