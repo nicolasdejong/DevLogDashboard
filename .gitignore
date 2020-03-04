@@ -1,0 +1,8 @@
+.dev-log-dashboard
+.idea/
+.mvn/
+target/
+*.iws
+*.iml
+*.ipr
+*.log

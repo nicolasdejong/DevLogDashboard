@@ -1,0 +1,58 @@
+// ANSI colors for lines with ANSI escape codes
+//
+// https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+//
+// classes are set by https://github.com/drudru/ansi_up
+
+// explicit color
+.true-color {}
+
+$ansi-black:   rgb(  0,   0,   0);;
+$ansi-red:     rgb(187,   0,   0);
+$ansi-green:   rgb(  0, 187,   0);
+$ansi-yellow:  rgb(187, 187,   0);
+$ansi-blue:    rgb(  0,   0, 187);
+$ansi-magenta: rgb(187,   0, 187);
+$ansi-cyan:    rgb(  0, 187, 187);
+$ansi-white:   rgb(255, 255, 255);
+
+$ansi-bright-black:   rgb( 85,  85,  85);
+$ansi-bright-red:     rgb(255,  85,  85);
+$ansi-bright-green:   rgb(  0, 255,   0);
+$ansi-bright-yellow:  rgb(255, 255,  85);
+$ansi-bright-blue:    rgb( 85,  85, 255);
+$ansi-bright-magenta: rgb(255,  85, 255);
+$ansi-bright-cyan:    rgb( 85, 255, 255);
+$ansi-bright-white:   rgb(255, 255, 255);
+
+// The default colors are not very readable on a black background
+.ansi-altered { // these are actually quite close to 'bright'
+  $ansi-red:     rgb(255, 100, 100);
+  $ansi-green:   rgb(100, 255, 100);
+  $ansi-yellow:  rgb(220, 220,   0);
+  $ansi-blue:    rgb(100, 100, 255);
+  $ansi-magenta: rgb(255, 100, 255);
+  $ansi-cyan:    rgb(  0, 220, 220);
+}
+
+.ansi {
+  &-black   { &-fg { color:$ansi-black; },   &-bg { background-color:$ansi-black; } }
+  &-red     { &-fg { color:$ansi-red; },     &-bg { background-color:$ansi-red; } }
+  &-green   { &-fg { color:$ansi-green; },   &-bg { background-color:$ansi-green; } }
+  &-yellow  { &-fg { color:$ansi-yellow; },  &-bg { background-color:$ansi-yellow; } }
+  &-blue    { &-fg { color:$ansi-blue; },    &-bg { background-color:$ansi-blue; } }
+  &-magenta { &-fg { color:$ansi-magenta; }, &-bg { background-color:$ansi-magenta; } }
+  &-cyan    { &-fg { color:$ansi-cyan; },    &-bg { background-color:$ansi-cyan; } }
+  &-white   { &-fg { color:$ansi-white; },   &-bg { background-color:$ansi-white; } }
+
+  &-bright {
+    &-black   { &-fg { color:$ansi-bright-black; },   &-bg { background-color:$ansi-bright-black; } }
+    &-red     { &-fg { color:$ansi-bright-red; },     &-bg { background-color:$ansi-bright-red; } }
+    &-green   { &-fg { color:$ansi-bright-green; },   &-bg { background-color:$ansi-bright-green; } }
+    &-yellow  { &-fg { color:$ansi-bright-yellow; },  &-bg { background-color:$ansi-bright-yellow; } }
+    &-blue    { &-fg { color:$ansi-bright-blue; },    &-bg { background-color:$ansi-bright-blue; } }
+    &-magenta { &-fg { color:$ansi-bright-magenta; }, &-bg { background-color:$ansi-bright-magenta; } }
+    &-cyan    { &-fg { color:$ansi-bright-cyan; },    &-bg { background-color:$ansi-bright-cyan; } }
+    &-white   { &-fg { color:$ansi-bright-white; },   &-bg { background-color:$ansi-bright-white; } }
+  }
+}

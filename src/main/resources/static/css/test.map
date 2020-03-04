@@ -1,0 +1,12 @@
+{
+	"version": 3,
+	"file": "../scss/test.css",
+	"sources": [
+		"../scss/test.scss"
+	],
+	"sourcesContent": [
+		".foo {\r\n  width: 100px;\r\n\r\n  .bar {\r\n    width: 200px;\r\n  }\r\n}"
+	],
+	"mappings": ";AAAA,AAAA,IAAI,CAAC;EACH,KAAK,EAAE,KAAM;CAKd;;;AAND,AAGE,IAHE,CAGF,IAAI,CAAC;EACH,KAAK,EAAE,KAAM;CACd",
+	"names": []
+}

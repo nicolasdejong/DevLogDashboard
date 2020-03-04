@@ -1,0 +1,116 @@
+# DevLogDashboard configuration.
+# NOTE: The server will update when this file is altered (so no need to restart)
+
+#port: 7099 # Server port (default is 8099)
+
+#root: /some/jars/directory # overrides the -root command line option. Default is dashboard start dir.
+
+# Variables that will be used in the rest of this yaml file (after definition)
+#
+# Usage is: ${name} or ${varname | function | ...}
+#
+# function is one of:
+#  - base64 [-encode][-decode]  (without arg -encode is assumed)
+#  - toUpper                    (makes output uppercase)
+#  - toLower                    (makes output lowercase)
+#
+# - Any other function name is taken literally. So "${a | b}" will become "b" when a is unknown
+# - Unknown variables will be untouched, so ${foobar} will become ${foobar}
+# - Fallback for variables is system environment variable.
+# - Nesting is allowed, eg ${${foo}:${bar} | base64}
+# - !There should be at least one whitespace around the pipe character!
+# - Unknown piped variables will be taken literally, so ${foobar | toUpper} will become FOOBAR
+# - For service.(vmParams|params), the service keys can be used as variable-names as well
+#
+# Example:
+#  - vmParams: ${debug} ${httpsOn} -Dpassword=${password | base64} -Dport=${port}
+#  - java:     ${javaEnvVar | java}
+#
+variables:
+  vmMem:   -Xmx128m
+  debug:   -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${service.port}
+
+# Service fields:
+# - name             Name of service (should be unique)
+# - label            Optional label that can contain html
+# - location         Location of the service, which can be one of:
+#                    - jar:  Absolute (C:/../..) or relative name of jar file, with optional * for wildcard.
+#                            This will execute the jar internal (in the dashboard VM) and capture the output.
+#                    - url:  Address to periodically call for an is-alive check. (external)
+#                    - port: [host:]port to periodically connect to for an is-alive check. (external)
+#                    - log:  Path to logfile to follow for changes
+#                    - exe:  Any other, being interpreted as command line text
+# - java             Optional location of the java exe to call. Default is just 'java'.
+# - command          Like location when location is the directory to run from
+# - dir              Optional location where the command and jobs are running from (default is root)
+# - logFile          When location is a url or port to watchdog and a logfile should also be followed.
+#                    This can be used instead of location if only a logfile should be followed.
+# - port             Port label on the dashboard. This will be overridden by the port number
+#                    in the process output, so can be omitted but this port will show also before running.
+# - pollInterval     External only: time between connection attempts. Default is 10s.
+#                    (one or more numbers with suffix m[illi]s,s[ec],m[in],h[our], e.g. 1m2s)
+# - restartCmd       External only: command line command(s) to restart the external service when not reachable
+# - restartDir       External only: directory to cd to before running the restart command
+# - group            External only: restartCmd for the whole group will be the same (e.g. for servlets)
+# - start            Internal only: True to automatically start this service jar when the LogDasboard is started
+#                    (unless the --noautostart command-line option is given)
+# - vmparams         VM parameters (alias for variables.vmparams)
+# - params           Jar parameters (alias for variables.params)
+# - jobs             Map of label to command line command. These commands can be started by long-clicking the
+#                    start button of a service.
+# - dependsOn        Names of services this service depends on. This service can be started once
+#                    these services are running ok (unless 'ignore dependencies' is checked in client configuration).
+# - outputLogFile    Path to file the command output should be saved to. (e.g. outputLogFile: ${name}-output.log)
+# - outputLogSize    Max size the outputLogFile should be truncated to (round robin). Supports K, M, G suffix.
+# - errToOut         When set to true the output to stderr, which is otherwise assumed to be errors (so in red),
+#                    will be interpreted as coming from stdout (default text output). This is for those processes
+#                    that use stderr for verbose/non-essential text.
+# - logMaxSize       Maximum log-lines size in bytes. Removes the first lines as new lines are added. Default is infinite.
+# - logMaxCount      Maximum log-line count. Removes the first lines as new lines are added. Default is 5000.
+# - logMaxAge        Maximum age of a log-line until it will be removed. Default is forever.
+#                    (one or more numbers with suffix m[illi]s,s[ec],m[in],h[our], e.g. 1m2s)
+# -excludeFromStart  Do not start this service when 'start all' is selected.
+#
+# Service fields are available as variables in the service. For example "outputLogFile: ${name}-output.log"
+#
+# A service with name 'defaults' can be added which contains default service values for the following services.
+# Each service can then override these values, if required.
+#
+services:
+
+  - name:          defaults
+    outputLogFile: ${name}-output.log
+    pollInterval:  18s
+    jobs:
+      clean: mvn clean
+      build: mvn clean install
+
+  - name:          RabbitMQ
+    location:      http://localhost:15672
+    port:          15672
+
+  - name:          MySQL
+    location:      localhost:3306
+    port:          3306
+
+  - name:          Example external
+    location:      http://some.domain.com:8080/some/path
+    port:          8080
+
+  - name:          Example jar file
+    location:      some/file/path/target/some-service-*.jar
+    vmparams:      ${vmMem}
+    dependsOn:
+      - RabbitMQ
+      - MySQL
+
+  - name:          Some Log
+    location:      C:/dev/dashboard/some.log
+
+  - name:          TestServer
+    location:      localhost:5544
+    logFile:       C:/dev/testserver/testserver.log
+    restartDir:    \dev\testserver
+    restartCmd:    cmd /C ping 127.0.0.1 -n 9 > nul & cmd /C touch unpause
+    pollInterval:  3s
+    group:         testservers

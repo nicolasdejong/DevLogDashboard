@@ -1,0 +1,361 @@
+<html>
+<head>
+  <title>Loading</title>
+  <style>body.app-starting { opacity: 0; background-color: black; }</style>
+  <!-- script src="..." is not used due to caching issues. A ?version postfix is added dynamically now -->
+  <script>const imports = [
+    ['css/fontawesome-all.css', 'rel=stylesheet', 'type=text/css'],
+    ['css/index.scss', 'rel=stylesheet', 'type=text/scss'],
+    'lib/moment.min.js',
+    'lib/sockjs.min.js',
+    'lib/stomp.min.js',
+    'lib/ansi_up.js',
+    'js/ncss_plus-1.js', // this will be called pscss-1.js later on
+    'js/util.js',
+    'js/server.js',
+    'js/messages-panel.js',
+    'js/state-history.js',
+    'js/index.js'
+  ];
+  </script>
+  <script>
+    // Dirty cache detection & prevent caching when changing versions
+    const initFunctions = [];
+    fetch('serverInfo?' + new Date().getTime())
+      .then(response => response.json())
+      .then(serverInfo => {
+        console.log(serverInfo.introText);
+        if(localStorage.buildTime !== serverInfo.buildTime) {
+          localStorage.buildTime = serverInfo.buildTime;
+          location.reload(/*clearCache=*/true);
+        }
+        const todoNames = imports.slice();
+        function loadNext() { if(todoNames.length === 0) initFunctions.forEach(f=>f()); else loadFrom(todoNames.shift()); }
+        function loadFrom(src) {
+          const isLink = /css$/.test(src);
+          const elem = document.createElement(isLink ? 'link' : 'script');
+          elem.setAttribute(isLink ? 'href' : 'src', (Array.isArray(src) ? src[0] : src) + '?' + serverInfo.buildTime);
+          if(Array.isArray(src)) src.slice(1).forEach(t=>elem.setAttribute(...t.split(/\s*=\s*/)));
+          if(isLink && src.find(s=>s.includes('/scss'))) loadNext(); // ncss links are triggered after ncss_plus is loaded
+          else elem.addEventListener('load', loadNext);
+          document.head.appendChild(elem);
+        }
+        loadNext();
+      });
+  </script>
+</head>
+<body class="app-starting">
+ <div class="body-content">
+  <div class="grid">
+    <span class="cells"><!--keep on same line as settings --></span><div class="cell-settings" click.eval="selectService(null)">
+      <div class="bgicon"><i class="fas fa-hourglass"></i></div>
+      <div class="label" style="top:2px"></div>
+      <div class="flags vars">
+        ${startParallel==='1'?'(parallel)':''} ${ignoreDeps==='1'?'(nodeps)':''}
+      </div>
+      <div class="content" click.eval="selectService(null)">
+        <div class="buttons-panel">
+          <div>
+            <div click.eval="Server.startAll();"><i class="far fa-play-circle"></i> Start all</div>
+            <div click.eval="Server.stopAll();"><i class="far fa-stop-circle"></i> Stop all</div>
+          </div>
+        </div>
+      </div>
+      <div class="right-top-buttons vars">
+        <i class="fa fa-recycle blinker" style="${mainInfo.latestVersion > mainInfo.version && !mainInfo.upgrading ? '' : 'display:none;'}" click.eval="showLatestReleaseNotes(event);" title="A new version is available. Click to show changes & upgrade button"></i>
+        <i class="fas fa-trash-alt"      style="${localStorage.hideSidebar=='1' && selectedService !== 'undefined' ? '' : 'display:none;'}" click.eval="clearLogOnServer();" title="clear log of this service on client and server"></i>
+        <i class="far fa-square"         style="${localStorage.hideSidebar=='1' && selectedService !== 'undefined' ? '' : 'display:none;'}" click.eval="onlyThisService();"  title="show only this service"></i>
+        <i class="fa fa-eye-slash"       style="${hidesToUse.length<='2' ? '' : 'color:orange;'}" id="filter-button" click.eval="showLogLineFilters(event)"  title="hide parts of log lines"></i>
+        <i class="fas fa-window-restore" click.eval="openInNewWindow()"
+                                              title="open in new window without decorations"></i>
+      </div>
+      <div class="local-time">${+showTime ? new Date().toISOString().replace(/^[^T]+T(\d+:\d+:\d+).*/g,'$1') : '' | update}</div>
+      <div class="left-bottom vars">
+        <i class="fas fa-reply-all" click.eval="location.hash='';" title="show all services" style="${services.length !== servicesUnfiltered.length ? '' : 'display:none'}"></i>
+      </div>
+    </div>
+  </div>
+  <div class="data-panel ${localStorage.staticFont === '1' ? ' static-font-size ' : ''}">
+    <div class="messages"></div>
+    <div class="messages-sidebar">
+      <canvas></canvas>
+      <div class="topButton">
+        <i class="fas fa-align-justify" click.eval="showSideMenu(true);"  title=""></i><br>
+      </div>
+      <div class="bottomButton">
+        <i class="fas fa-align-justify" click.eval="showSideMenu(false);"  title=""></i><br>
+      </div>
+      <div class="side-menu">
+        <i style="display:block;height:1em;">
+           <span click.eval="scrollToBottom();" title="scroll log to bottom" style="float:right"><i class="fas fa-arrow-down"></i></span
+          ><span click.eval="scrollToTop();"    title="scroll log to top"    style="float:right"><i class="fas fa-arrow-up"></i></span>
+        </i>
+        <div click.eval="popout();"
+             style="${services.length>2?'':'display:none'}">
+          <i class="fas fa-window-restore"></i>
+          Pop out
+        </div>
+        <div click.eval="onlyThisService();"
+             style="${services.length>1?'':'display:none'}">
+             <i class="far fa-square"></i>
+             Only this service
+        </div>
+        <div style="visibility:hidden;height:1em"></div>
+        <div click.eval="clearLogOnServer();">
+          <i class="fas fa-trash-alt" title="clear log of this service on client and server"></i>
+          Clear log
+        </div>
+      </div>
+    </div>
+    <div class="info-page">
+      <div class="tabs" style="height:100%; border-right: 1px solid #777; padding: 0.5em 0.2em 0 0.1em; text-align: center;">
+        <i class="tab-button fas fa-info"    target="#about"         title="About"></i>
+        <i class="tab-button fas fa-cog"     target="#settings"      title="Settings"></i>
+        <i class="tab-button fas fa-history" target="#history"       title="History"></i>
+        <i class="tab-button fas fa-list-ol" target="#release-notes" title="Release Notes"></i>
+      </div>
+      <div id="about" class="tab">
+        <h2 style="font-size:250%">About</h2>
+        <div style="margin:0 0 1em 3.9em;font-size:150%;">
+          ${latestVersion > version && !this.upgrading ? '
+             <br>
+             <span class="blinker" style="color:#8fee8f">UPDATE AVAILABLE! V' + latestVersion + '</span>
+             <button style="font-size:50%;user-select:none;" click.eval="showLatestReleaseNotes(event);">Show</button>
+          ' : ''
+          }
+          ${this.upgrading ? '<span class="blinker">UPGRADING to the new version</span>' : ''}
+        </div>
+        <div class="cfg-error">${cfgError}</div>
+        <div class="mono-text">     ${introText}
+
+        Shows a configured list of services. These services can be:
+         - Started by the server itself. The process output then is analyzed to determine the state.
+         - External connection, tested to be alive. Can be configured to act as watchdog.
+         - Logfile. The contents of a logfile (which may be appended to) will be shown as output.
+
+        Start the server with the -help option to see possible start options.
+        See the built in services.yaml file for configuration options.
+
+        To change the service configuration, find the services.yaml file in the jar and
+        copy it to the directory the jar runs from. That file will be used when available instead of
+        the internal one. The server will update itself when it detects any change in the configuration.
+
+        I created this application in my spare-time while on an assignment in 2018 where a team of
+        developers used it (and may still use it) to handle running a few dozen micro-services at
+        development time. Since then I also used it on assignments in other companies. So it seems this
+        functionality is helpful in other environments as well. Therefore I made it available on github.
+
+        Any issues or requests, go to github: <a target="_blank" href="https://github.com/nicolasdejong/DevLogDashboard">https://github.com/nicolasdejong/DevLogDashboard</a>
+
+        ${servicesUnfiltered.length != services.length ? 'Showing ' + services.length + ' of ' + servicesUnfiltered.length + ' services.' : ''}
+        </div>
+      </div>
+      <div id="settings" class="tab" style="font-size: 150%; margin: 0.5em 0 0 4em; font-family: sans-serif"><h2 style="margin:0">Settings</h2>
+        <br>
+        Settings are stored in the browser.
+        <br>
+        <br>
+
+        <input type="checkbox" click.eval="localStorage.showRunTime^=1; updateForSettings('showRunTime');">Show run time
+        <span>Time a service has been running</span>
+        <br>
+        <input type="checkbox" click.eval="localStorage.showLogVelocity^=1; updateForSettings('showLogVelocity');">Show log velocity
+        <span>Number of log-lines added by the service in the last 10 minutes</span>
+        <br>
+        <input type="checkbox" click.eval="localStorage.ignoreDeps^=1; updateForSettings('ignoreDeps');">Ignore dependencies
+        <span>Start services without making sure the service they depend on is started first.</span>
+        <br>
+        <input type="checkbox" click.eval="localStorage.startParallel^=1; updateForSettings('startParallel');">Start parallel
+        <span>Start services at the same time. Note that some services are confused or fail when starting parallel</span>
+        <br>
+        <input type="checkbox" click.eval="localStorage.showTime^=1;">Show current local time
+        <span>Show current local time in the command tile</span>
+        <br>
+        <input type="checkbox" click.eval="localStorage.staticFont^=1; updateForSettings();"
+        >Fixed font size <select onchange="localStorage.staticFontSize=this.value; updateForSettings();" id="fontSize">
+          <option value="9">9</option>
+          <option value="10">10</option>
+          <option value="12">12</option>
+          <option value="14">14</option>
+          <option value="16">16</option>
+          <option value="20">20</option>
+          <option value="28">28</option>
+          <option value="36">36</option>
+        </select>
+        <span>Set a fixed font size that is not related to the size of the window (excludes tiles).</span>
+        <br>
+        <input type="checkbox" click.eval="localStorage.cellsMatrixType='auto'; updateForSettings();" id="cellsMatrixTypeCheckbox"
+        >Number of cells per row
+        <select onchange="localStorage.cellsMatrixType=this.value; updateForSettings();" id="cellsMatrixType">
+          <option value="auto">Automatic</option>
+          <option value="fixed">Set to fixed amount...</option>
+          <option value="scount">Number of services</option>
+          <option value="scount+1">Number of services + 1</option>
+        </select>
+        <div id="cellsPerRowContainer" style="display:inline;">
+          <select onchange="localStorage.cellsPerRow=this.value; updateForSettings();" id="cellsPerRow">
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+            <option value="13">13</option>
+            <option value="14">14</option>
+            <option value="15">15</option>
+            <option value="16">16</option>
+            <option value="17">17</option>
+            <option value="18">18</option>
+            <option value="19">19</option>
+            <option value="20">20</option>
+          </select>
+          cells per row
+        </div><br>
+        <span>Sets size of tiles</span>
+        <br>
+        <input type="checkbox" click.eval="localStorage.hideSidebar^=1; updateForSettings('hideSidebar');">Hide sidebar
+        <span>Hide the bar next to the scroll-bar that shows an overview of all line colors</span>
+        <br>
+        <input type="checkbox" click.eval="localStorage.ansiAltered^=1; updateForSettings('ansiAltered');">Altered ANSI colors
+        <span>The colors used in the lines with
+          <a target="_blank" href="https://en.wikipedia.org/wiki/ANSI_escape_code#Colors">ANSI escape codes</a>
+          slightly changed to make text better readable on a black background</span>
+        <br>
+      </div>
+      <div id="history" class="tab mono-text"><h2>History of service states</h2></div>
+      <div id="release-notes" class="tab mono-text"><h2>Release Notes</h2>
+        V11/20200302
+        - Small changes in preparation to put on github (docs, package names, update location)
+        - Added: LogHides hides part of log lines: date, process-id, trace, thread, package (via icon)
+        - Added: Long-press on start button will show extra configured command 'jobs'
+        - Added: Upgrades now via patch download (~100KB) instead of the whole jar (~30MB)
+        - Added: User set font size no longer includes tiles: they will resize with width of window
+        - Added: Number of tiles per configuration now can be set to number of services
+        - Fixed: Control tile size incorrect for some window sizes
+        - Fixed: Disabled tray tooltip for now, since it sometimes pops up in middle of screen
+
+        V10/20181118
+        - Added: Now possible to run executables as well
+        - Added: errToOut flag to read stderr output as if it is from stdout
+        - Added: excludeFromStartAll flag for services that should not start when 'start all' is clicked
+        - Added: Support for ANSI colors in text with escape codes
+        - Added: Tray icon popup for larger tray image
+        - Fixed: Improved tray image generation for large amounts of services (>25)
+        - Fixed: Stack trace detection sometimes did not collapse the whole trace
+        - Fixed: External service polling was set to 1s instead of 10s if not configured
+        - Fixed: Service error state would not be reset when continuously logging (debounce)
+        - Fixed: Workaround for Chrome memory-leak that would after a while crash the page
+
+        V9/20180809
+        - Added: Output of services can now be logged to file (outputLogFile, outputLogSize)
+        - Added: A 'defaults' service copies its fields into any other service, to prevent the need for duplications
+        - Added: Exceptions in log now collapse per cause
+        - Added: Red tiles now show the error in the tooltip
+        - Added: Sidebar next to scroll bar shows overview of all lines (can be hidden)
+        - Added: Support for filtering services in url. Used in sidebar-menu 'show only this service'
+        - Added: Tray tooltip now summarizes the service states
+        - Moved: Log buttons (scroll top/bottom) moved into sidebar-menu
+        - Fixed: Watchdog bug with Linux threading
+        - Fixed: Watchdog bug with slow restarting services
+        - Fixed: Browser caching issues fixed once this version is running (clear cache is required when upgrading to V9)
+
+        V8/20180715
+        - Added support for logfiles -- output of an external service can be shown and analyzed now
+        - All dashboard console output is now logged to the dashboard.log file
+        - Fixed bug where the watchdog would sometimes run the restart command multiple times
+        - Configuration: added variables support to prevent duplication of settings
+        - Configuration: added Dashboard server-port to the services.yaml
+        - Configuration: added timeout for external-service polling to the services.yaml (default is 10s)
+        - Configuration: FHIR-service configuration now checks via REST call instead of just html page
+        - Configuration: removed explicit 'external' flag from services.yaml -- it is now inferred from given location
+        - Many small repairs
+
+        V7/20180626
+        - Added support for restart command with external services, acting as a watchdog that restarts service when down
+        - Now includes the '... n more' line in the collapsed exception text
+        - Added state history overview
+        - Added check for new version and provides option to update itself
+        - Added error message in client in case server configuration has syntax errors
+        - Fixed updating services.yaml doesn't update external services
+        - Fixed updating the logger velocity
+
+        V6/20180515
+        - Added 'clear logger' button to clear the logger of a service
+        - Added option to see the running-time of a service
+        - Added option to see the logger velocity of a service (number of logger lines in last 10 minutes)
+        - Moved settings to the bottom pane
+        - Disabled websocket stats on server output
+
+        V5/20180418
+        - Changes to the configuration are now detected and leads to an update
+        - Added color purple for services whos jar was not found. Updates when jar is found.
+        - The 'start' field in services configuration now auto starts the service
+        - Added -noautostart command line option
+        - Added -startall command line option
+        - Fixed tray icon size in different OSes
+        - Fixed service dependency error in parallel start
+
+        V4/20180413
+        - Configuration now accepts service name to include (abs/rel) path.
+        - Port retrieved from process output overrides configured port.
+        - Fixed error where stop of a waiting-to-start service wouldn't work.
+
+        V3/20180411
+        - Tray icon now has a 'start/stop all services' item.
+
+        V2/20180403
+        - Jar location was set wrong
+        - Added tray-icon (and -notray option).
+        - Added release notes.
+
+        V1/20180328
+        - Added command-line options (-root, -help).
+        - Added intro text (this page).
+        - Added localStorage option to set the number of boxes per line.
+
+        V0/20180322
+        - Initial version.
+      </div>
+    </div>
+  </div>
+  <div class="popup-menu">
+    <div class="header">
+      <div class="title">title</div>
+      <div class="close" onclick="parentNode.parentNode.handling.close();">X</div>
+    </div>
+    <div class="content"></div>
+  </div>
+ </div>
+
+  <div class="upgrading-progress">
+    <h2>Upgrading progress</h2>
+    <div class="steps">
+      <div class="step current"><div class="lds-dual-ring progress"></div>Stopping old server</div>
+      <div class="step"><div class="lds-dual-ring progress"></div>Replacing old by new server</div>
+      <div class="step"><div class="lds-dual-ring progress"></div>Starting new server</div>
+    </div>
+  </div>
+
+  <template      id="template-cell"
+              class="cell ${state.state} ${selected ? 'selected' : ''}"
+         click.eval="selectService('${name}')"
+              title="${state.error ? state.lastError : ''}"
+  >
+    <div class="label"><div>${label}</div></div>
+    <div class="port ${locationType == 'JAR' && state.state != 'OFF' ? '' : 'hidden'}"><a href="http://localhost:${port}/" target="_blank">${port}</a></div>
+    <div class="port ${locationType == 'JAR' && state.state == 'OFF' ? '' : 'hidden'}">${port}</div>
+    <div class="port ${locationType == 'JAR' || locationType == 'NONE' ? 'hidden' : ''}"><a href="${location}" target="_blank" title="${location}"}>link</a></div>
+    <div class="log-velocity" title="number of added log-lines in the last 10 minutes" style="z-index:2">${!state.running ? '' : (state.logVelocity || '') | update}</div>
+    <div class="external">${locationType == 'JAR' || locationType == 'EXE' ? '' : (restartCmd ? 'Watchdog' : (locationType == 'NONE' ? '?' : 'External'))}</div>
+    <div class="start-stop-button ${locationType == 'JAR' || locationType == 'EXE' ? '' : 'hidden '}">
+      <i class="far fa-${state.running || state.waiting?'stop':'play'}-circle"
+         click.eval="${state.running || state.waiting? 'stopService(\''+name+'\')' : 'startService(\''+name+'\')'}"
+         longclick.eval="${state.running ? '' : 'showStartServicePopup(event, \''+name+'\')'}"
+      ></i>
+    </div>
+    <div class="run-time" title="${locationType == 'JAR' ? 'Running since ' + state.timeStartedText : ''}">${!state.running || locationType != 'JAR' ? '' : timeAgo(state.timeStarted) | update}</div>
+  </template>
+</body>
+</html>

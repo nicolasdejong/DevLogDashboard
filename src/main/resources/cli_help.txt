@@ -1,0 +1,19 @@
+
+Possible JVM options:
+-Dserver.port=<port>  Server port (default is 8099 or from services.yaml, 0 for random)
+-Droot=<dir>          Where to load jars from (default is current directory)
+-DpropFile=<file>     yaml file (default is services.yaml in local dir, then inner)
+-Dnotray              Don't add a tray icon
+
+Possible options:
+--root[=]<dir>        Where to load jars or run commands from (default is current directory)
+--server.port=<port>  Server port (default is 8099 or from services.yaml, 0 for random)
+--notray              Don't add a tray icon
+--noautostart         Ignore the 'start' keys of the services configuration
+--startall            Act as if all services have the 'start: true' configuration
+--config[=]<path>     Location where the load the configuration. When a directory path
+                      is provided, 'services.yaml' will be appended.
+
+Services configuration can be edited by extracting the services.yaml from the jar
+and copying it into the directory the jar is starting from. That file takes
+precedence over the internal services.yaml.

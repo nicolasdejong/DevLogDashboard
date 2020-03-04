@@ -1,0 +1,15 @@
+logging:
+  level:
+    org.apache.catalina.core.AprLifecycleListener: WARN
+    org.apache.catalina.core.ContainerBase: WARN
+    org.springframework: WARN
+    org.springframework.boot.web.embedded.tomcat: INFO
+    #org.springframework.web.servlet: INFO
+  #file: dashboard.log
+
+spring:
+  profiles.active: default
+  main:
+    banner-mode: 'OFF'
+  webservices:
+    path: /services0 # we want to use the "/services" endpoint
