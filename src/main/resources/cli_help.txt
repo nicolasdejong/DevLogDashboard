@@ -6,13 +6,18 @@ Possible JVM options:
 -Dnotray              Don't add a tray icon
 
 Possible options:
---root[=]<dir>        Where to load jars or run commands from (default is current directory)
+--root[=]<dir>        Where to load jars or run commands from (default is current directory
+                      or from services.yaml)
 --server.port=<port>  Server port (default is 8099 or from services.yaml, 0 for random)
 --notray              Don't add a tray icon
 --noautostart         Ignore the 'start' keys of the services configuration
 --startall            Act as if all services have the 'start: true' configuration
 --config[=]<path>     Location where the load the configuration. When a directory path
                       is provided, 'services.yaml' will be appended.
+--configDoc           Prints the example services.yaml file that includes documentation
+                      on what fields are available and can be configured per service.
+                      This file will be saved to current directory when started without
+                      a services.yaml to load.
 
 Services configuration can be edited by extracting the services.yaml from the jar
 and copying it into the directory the jar is starting from. That file takes
