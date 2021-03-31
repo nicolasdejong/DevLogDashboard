@@ -6,22 +6,22 @@
 A dashboard that shows log output and service state, typically when in a development environment.
 
 The dashboard shows a configured list of services. These services can be:
- - Started by the server itself. The process output then is analyzed to determine the state.
+ - Started by this server. The process output then is analyzed to determine the state.
+ - Logfile, handled like process output.
  - External connection, tested to be alive. Can be configured to act as watchdog.
- - Logfile. The contents of a logfile (which may be appended to) will be shown as output.
 
 See the built in [services.yaml](src/main/resources/services.yaml) file for service configuration options.
 
-To change the service configuration, copy the services.yaml to the directory the jar runs from
-(or --root dir). That file will be used when available instead of
-the internal one. The server will update itself when it detects any change in the configuration.
+When no services.yaml file is found, a default one (including documentation) is saved to the
+directory the jar runs from (unless --root is given, see below).
+The server will update itself when it detects any change in the configuration file.
 
 
 ## Why was it created
 I created this application in my spare-time while on an assignment in 2018 where a team of
-developers used it (and may still use it) to handle running a few dozen micro-services at
-development time. Since then I also used it on assignments in other companies. So it seems this
-functionality is helpful in multiple environments. Therefore I made it available on github.
+developers used it to handle running a few dozen micro-services at development time.
+Since then I also it on multiple assignments in more companies. So it seems this
+functionality is helpful in other environments as well. Therefore, I made it available on github.
 
 ## How to run
 You can build it yourself (check out this repository and do a `mvn clean install`) or download
@@ -47,4 +47,8 @@ Possible options:
 --startall            Act as if all services have the 'start: true' configuration
 --config[=]<path>     Location where the load the configuration. When a directory path
                       is provided, 'services.yaml' will be appended.
+--configDoc           Prints the example services.yaml file that includes documentation
+                      on what fields are available and can be configured per service.
+                      This file will be saved to current directory when started without
+                      a services.yaml to load.
 ```

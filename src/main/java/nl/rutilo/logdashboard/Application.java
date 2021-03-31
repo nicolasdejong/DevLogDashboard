@@ -67,6 +67,7 @@ public class Application {
             .setIgnoreIllegals() // args also used by SpringBoot
             .build();
         if(args.hasFlag("help")) { printHelp(); return; }
+        if(args.hasFlag("configDoc")) { printConfigDoc(); return; }
         if(args.hasFlag("noautostart")) Services.noAutoStart = true;
         if(args.hasFlag("startall")) Services.autoStartAll = true;
         args.getValueOf("root").ifPresent(root -> nl.rutilo.logdashboard.Configuration.setJarsDir(checkExists(new File(root), "-root")));
@@ -133,8 +134,11 @@ public class Application {
     private static void printIntro() {
         System.out.println(ServerInfo.get().introText); // NOSONAR first log line
     }
-    private static void printHelp() throws IOException {
-        System.out.println(IOUtil.asString(IOUtil.exhaust(Application.class.getResourceAsStream("/cli_help.txt")))); // NOSONAR help output
+    private static void printHelp() {
+        System.out.println(IOUtil.asString(Application.class.getResourceAsStream("/cli_help.txt"))); // NOSONAR help output
+    }
+    private static void printConfigDoc() {
+        System.out.println(IOUtil.asString(Application.class.getResourceAsStream("/services.yaml"))); // NOSONAR help output
     }
 
     public static int getPort() { return port; }
@@ -225,6 +229,7 @@ public class Application {
 
     private static LimitedSizeFile initConsoleOutput() {
         final LimitedSizeFile file = new LimitedSizeFile(Constants.OUTPUT_LOG_FILE, Constants.OUTPUT_LOG_SIZE);
+        file.getFile().getParentFile().mkdirs();
         System.setOut(new ConsoleInterceptor(System.out, file, /*isErrors=*/false));
         System.setErr(new ConsoleInterceptor(System.err, file, /*isErrors=*/true));
         return file;

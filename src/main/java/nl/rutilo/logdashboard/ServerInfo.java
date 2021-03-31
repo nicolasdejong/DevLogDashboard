@@ -10,29 +10,29 @@ public class ServerInfo {
     public final String version;
     public final String buildTime;
     public final String introText;
-    public final String cfgError;
-    public final boolean upgrading;
+    public       String cfgError; // may change when user updates services yaml
+    public       boolean upgrading; // may change when upgrading starts
 
     static {
         instance = new ServerInfo();
     }
     public static ServerInfo get() {
+        instance.cfgError = ServicesLoader.cfgError;
+        instance.upgrading = WebController.isUpgrading();
         return instance;
     }
 
     private ServerInfo() {
         final Optional<String> dt = ManifestUtil.getManifestDateTimeText();
-        version = ManifestUtil.getVersion();
-        buildTime = dt.orElse("" + Constants.APP_START_TIME).replaceAll("T\\d.*$","");
+        version = Constants.APP_VERSION;
+        buildTime = dt.orElse("" + Constants.APP_RELEASE_DATE).replaceAll("T\\d.*$","");
         introText = String.join(" ",
             "LogDashboard",
-            "V" + version,
-            "(" + dt.orElse("dev") + ")",
+            "V" + Constants.APP_VERSION,
+            "(" + Constants.APP_RELEASE_DATE + ")",
             "by Nicolas de Jong",
             ""
         );
-        cfgError = ServicesLoader.cfgError;
-        upgrading = WebController.isUpgrading();
     }
 
     public String getTitleBase() {

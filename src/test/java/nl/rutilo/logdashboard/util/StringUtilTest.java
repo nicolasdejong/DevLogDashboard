@@ -69,9 +69,6 @@ public class StringUtilTest {
         assertThat(StringUtil.replaceVariable(vars, "${nonexisting | foo}", false), is("foo"));
         assertThat(StringUtil.replaceVariable(vars, "${nonexisting | foo bar}", false), is("foo bar"));
 
-        // the next assumes the PATH env var exists on the system running this (win / linux)
-        final String path = System.getenv("PATH");
-        assertThat(StringUtil.replaceVariable(vars, "${path}", false), is(path));
         assertThat(StringUtil.replaceVariable(vars, "${nonexisting}", true), is(""));
     }
     @Test public void replaceVariableObject() {

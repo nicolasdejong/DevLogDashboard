@@ -36,6 +36,7 @@ public class Service implements Comparable {
     private String       dir;
     private String       logFile;
     private boolean      start;
+    private String       startedPattern;
     private int          port;
     private String       params;
     private String       vmparams;
@@ -111,7 +112,7 @@ public class Service implements Comparable {
         if(state.isRunning()) {
             port = old.port; // value was derived from log when service started (what if not?)
             if(!old.getOutputLogFile().equals(getOutputLogFile())
-                || old.getOutputLogFileMaxBytes() != old.getOutputLogFileMaxBytes()) state.resetOutputLog();
+                || old.getOutputLogFileMaxBytes() != getOutputLogFileMaxBytes()) state.resetOutputLog();
         }
     }
 
@@ -131,7 +132,7 @@ public class Service implements Comparable {
         return Optional.empty();
     }
     public Optional<File> getOutputLogFile() {
-        return outputLogFile == null ? Optional.empty() : Optional.of(new File(outputLogFile));
+        return outputLogFile == null ? Optional.empty() : Optional.of(new File(getDir().orElse(new File(".")), outputLogFile));
     }
     public long getOutputLogFileMaxBytes() {
         final long max = outputLogSize == null ? -1 : StringUtil.sizeToLong(outputLogSize);
@@ -171,9 +172,9 @@ public class Service implements Comparable {
     public String getLocation() { return location != null ? location : command;  }
     public Optional<File> getDir() {
         return Util.orSupplyOptional(
-            () -> Optional.ofNullable(dir).map(dirName -> new File(dirName).isAbsolute() ? new File(dirName) : new File(Configuration.getJarsDir(), dirName)),
-            () -> Util.whenThen(command != null && location != null, () -> Optional.of(location).map(File::new)),
-            () -> Util.whenThen(command == null && location != null, () -> getFileLocation().map(File::getParentFile))
+            () -> Optional.ofNullable(dir).map(dirName -> new File(dirName).isAbsolute() ? new File(dirName) : new File(Configuration.getRootDir(), dirName)).filter(File::isDirectory),
+            () -> Util.whenThen(command != null && location != null, () -> Optional.of(location).map(File::new).filter(File::isDirectory)),
+            () -> Util.whenThen(command == null && location != null, () -> getFileLocation().map(File::getParentFile)).filter(File::isDirectory)
         );
     }
 

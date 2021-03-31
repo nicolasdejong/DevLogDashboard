@@ -3,6 +3,7 @@ package nl.rutilo.logdashboard.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.function.Consumer;
@@ -18,7 +19,7 @@ public class LineStreamHandler {
     private boolean           nextOverwrite = false;
     private int               peekByte      = -1;
 
-    public static class Line {
+    public static final class Line {
         public final String text;
         public final boolean replacesPreviousLine;
 
@@ -34,13 +35,12 @@ public class LineStreamHandler {
 
     private Line nextLine() {
         final StringBuilder sb = new StringBuilder(nextLineInit);
-        boolean replacing = sb.length() != 0;
-        boolean overwrite = nextOverwrite;
+        final boolean replacing = sb.length() != 0;
+        final boolean overwrite = nextOverwrite;
         boolean done = false;
         boolean endOfStream = false;
         int index = 0;
         int readCount = 0;
-        int prevByte = -1;
         nextLineInit = "";
         nextOverwrite = false;
 
@@ -76,18 +76,17 @@ public class LineStreamHandler {
                         }
                         break;
                     default:
-                        if(overwrite) sb.setCharAt(index++, (char)b); else sb.append((char)b);
+                        if(overwrite && index < sb.length()) sb.setCharAt(index++, (char)b); else sb.append((char)b);
                 }
-                prevByte = b;
-            } catch (IOException e) {
+            } catch (final IOException ignored) {
                 return null;
             }
         }
         return endOfStream ? null : new Line(sb.toString(), replacing);
     }
-    private String removeLastOf(String s) { return s.isEmpty() ? "" : s.substring(0, s.length()-1); }
-    private void removeLastOf(StringBuilder sb) { if(sb.length() > 0) sb.setLength(sb.length()-1); }
-    private void removeAt(StringBuilder sb, int index) { if(index >= 0 && index < sb.length()) sb.delete(index, index+1); }
+    private static String removeLastOf(String s) { return s.isEmpty() ? "" : s.substring(0, s.length()-1); }
+    private static void removeLastOf(StringBuilder sb) { if(sb.length() > 0) sb.setLength(sb.length()-1); }
+    private static void removeAt(StringBuilder sb, int index) { if(index >= 0 && index < sb.length()) sb.delete(index, index+1); }
 
     private Iterator<Line> iterator() {
         return new Iterator<Line>() {
@@ -101,7 +100,7 @@ public class LineStreamHandler {
                 return nextLine != null;
             }
             @Override public Line next() {
-                if(nextLine == null) throw new IllegalStateException("next() without hasNext() == true");
+                if(nextLine == null) throw new NoSuchElementException("next() without hasNext() == true");
                 final Line result = nextLine;
                 nextLine = null;
                 return result;

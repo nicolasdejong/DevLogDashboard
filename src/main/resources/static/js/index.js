@@ -2,7 +2,7 @@
 // By now a model-view library should be used because there
 // are too many hacks. When I have time this code should be replaced.
 
-console.log('Started at', moment().format('H:mm:ss'));
+console.log('Started client at', moment().format('H:mm:ss'));
 
 const LARGE_YPOS = 999999999;
 const MOUSEDOWN_LONG_TIMEOUT = 500;
@@ -63,6 +63,7 @@ function init() {
     document.title = info.introText.split(/by/)[0];
     updateVariablesIn($query('.info-page'), info);
     checkForNewVersion();
+    if(mainInfo.cfgError) selectService(null);
   });
   updateForSettings();
   setServerFlags();
@@ -145,6 +146,7 @@ function handleProcessOutput(output) {
   addToLog(output.line.type, output.line.text, output.line.replaces);
 }
 
+
 function updateServices() {
   Server.getServices()
     .then(newServices => {
@@ -210,8 +212,9 @@ function getSelectedService() {
   return services.find(s => s.name === localStorage.selectedService);
 }
 function selectService(name) {
-  const service = getServiceWithName(name);
-  if (service && service.selected) return;
+  let promise = Promise.resolve();
+  const service = name && getServiceWithName(name);
+  if (service && service.selected) return promise;
   $query('.data-panel').classList.toggle("service", !!service);
   updateCellsForNewSelection(service);
   localStorage.selectedService = service ? service.name : '';
@@ -220,14 +223,15 @@ function selectService(name) {
     selectedService = service;
     consolidateLog(); // debounced -- it shouldn't be called after clearLog
     clearLog();
-    updateLog(service);
+    promise = updateLog(service);
   }
   if(!service) {
     selectedService = null;
     clearLog();
-    Server.sendOutputOfService({name:'{non-existing}'}); // stops sending output
+    promise = Server.sendOutputOfService({name:'{non-existing}'}); // stops sending output
   }
   updateForSettings();
+  return promise;
 }
 
 function updateCellsForNewSelection(service) {
@@ -253,17 +257,21 @@ function onlyThisService() {
 }
 function regexEscape(s) { return s.replace(/([.*?()])/g, '\\$1'); }
 
-function startService(name) {
+function startService(name) { // called from the tile 'play' button
   const service = getServiceWithName(name);
   if (!service) return;
-  Server.startService(service).then( () => {
-    selectService(service);
+  let updated = Promise.resolve();
+  if(!service.selected) updated = selectService(service);
+  return updated.then(() => {
+    return clearLogOnServer().then(() => sleep(500)).then(() => { clearLog(); return Server.startService(service); });
   });
 }
-function stopService(name) {
+function stopService(name) { // called from the tile 'stop' button
   const service = getServiceWithName(name);
   if (!service) return;
-  Server.stopService(service);
+  let updated = Promise.resolve();
+  if(!service.selected) updated = selectService(service, true);
+  return updated.then(() => Server.stopService(service));
 }
 
 function handleServiceChanges(serviceUpdate) {

@@ -24,7 +24,8 @@
 #
 # Example:
 #  - vmParams: ${debug} ${httpsOn} -Dpassword=${password | base64} -Dport=${port}
-#  - java:     ${javaEnvVar | java}
+#  - java14:   /some/path/to/java11/bin/java
+#  - java:     ${java14 | java}
 #
 variables:
   vmMem:   -Xmx128m
@@ -54,6 +55,8 @@ variables:
 # - group            External only: restartCmd for the whole group will be the same (e.g. for servlets)
 # - start            Internal only: True to automatically start this service jar when the LogDasboard is started
 #                    (unless the --noautostart command-line option is given)
+# - startedPattern   Regular expression that checks if a log line represents 'the service has started' state.
+#                    When set replaces the default regex: ^.*(Started .*? in \d|Hello from).*$
 # - vmparams         VM parameters (alias for variables.vmparams)
 # - params           Jar parameters (alias for variables.params)
 # - jobs             Map of label to command line command. These commands can be started by long-clicking the
@@ -69,7 +72,7 @@ variables:
 # - logMaxCount      Maximum log-line count. Removes the first lines as new lines are added. Default is 5000.
 # - logMaxAge        Maximum age of a log-line until it will be removed. Default is forever.
 #                    (one or more numbers with suffix m[illi]s,s[ec],m[in],h[our], e.g. 1m2s)
-# -excludeFromStart  Do not start this service when 'start all' is selected.
+# - excludeFromStartAll  Do not start this service when 'start all' is selected.
 #
 # Service fields are available as variables in the service. For example "outputLogFile: ${name}-output.log"
 #
@@ -81,6 +84,7 @@ services:
   - name:          defaults
     outputLogFile: ${name}-output.log
     pollInterval:  18s
+    java:          ${java14 | java}
     jobs:
       clean: mvn clean
       build: mvn clean install
@@ -105,6 +109,7 @@ services:
       - MySQL
 
   - name:          Some Log
+    label:         <b>Some</b> log
     location:      C:/dev/dashboard/some.log
 
   - name:          TestServer

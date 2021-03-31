@@ -57,7 +57,7 @@ public class TrayPopup {
         bounds = new Rectangle(new Point(Integer.MAX_VALUE, Integer.MAX_VALUE), trayIcon.getSize());
     }
     private static boolean mouseInTray() {
-        final Point ptr = MouseInfo.getPointerInfo().getLocation();
+        //final Point ptr = MouseInfo.getPointerInfo().getLocation(); <-- sometimes npe
         return false; // this often incorrect --> bounds.contains(ptr);
     }
     private static boolean mouseInPopup() {

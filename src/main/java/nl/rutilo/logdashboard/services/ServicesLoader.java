@@ -12,10 +12,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLParser;
 import nl.rutilo.logdashboard.Application;
 import nl.rutilo.logdashboard.Configuration;
 import nl.rutilo.logdashboard.Constants;
-import nl.rutilo.logdashboard.util.NaturalOrderComparator;
-import nl.rutilo.logdashboard.util.StringUtil;
+import nl.rutilo.logdashboard.util.*;
 import nl.rutilo.logdashboard.util.Timer;
-import nl.rutilo.logdashboard.util.Util;
 import org.apache.tomcat.util.http.fileupload.util.Streams;
 
 import java.io.File;
@@ -28,7 +26,6 @@ import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static nl.rutilo.logdashboard.services.Service.LocationType.JAR;
 
@@ -103,7 +100,7 @@ public class ServicesLoader {
         if(service.getState().isRunningOk()) return;
         if(service.getFileLocation().map(File::exists).orElse(false)) return;
 
-        final File serviceDir = service.getDir().orElseGet(Configuration::getJarsDir);
+        final File serviceDir = service.getDir().orElseGet(Configuration::getRootDir);
         final String location0 = service.getLocation().replace("\\", "/");
         final int lastSlash = location0.lastIndexOf('/');
         final String location = location0.substring(lastSlash + 1);
@@ -230,9 +227,12 @@ public class ServicesLoader {
             // default service
             if (tok.isStructEnd() && Service.defaults == null) {
                 final Object currentValue = _parsingContext.getCurrentValue();
+                final Service service = currentValue instanceof Service ? (Service)currentValue :
+                                        currentValue instanceof List && !((List)currentValue).isEmpty() && ((List)currentValue).get(0) instanceof Service
+                                            ? (Service)((List)currentValue).get(0) : null;
 
-                if (currentValue instanceof Service && ((Service) currentValue).getName().matches("(?i)^defaults?$")) {
-                    Service.defaults = (Service) currentValue; // NOSONAR -- static from configuration
+                if (service != null && service.getName().matches("(?i)^defaults?$")) {
+                    Service.defaults = service; // NOSONAR -- static from configuration
                 }
             }
             return tok;
@@ -242,12 +242,22 @@ public class ServicesLoader {
 
     private static String getServicesConfigurationText() {
         try {
-            final InputStream cfgIn = Util.orSupplyOptional(
-                ServicesLoader::getConfigurationStreamFromFile,
-                ServicesLoader::getConfigurationStreamFromJarFile
-            ).orElseThrow(() -> new IllegalStateException("No configuration found?!")); // unlikely as cfg is in jar
+            final Optional<InputStream> foundFileOpt = ServicesLoader.getConfigurationStreamFromFile();
+            final InputStream cfgIn = foundFileOpt.orElseGet(ServicesLoader::getConfigurationStreamFromThisJarFile);
+
+            if(cfgIn == null) throw new IllegalStateException("No configuration found?!"); // unlikely as cfg is in jar
 
             final String cfgData = Streams.asString(cfgIn);
+
+            // If no cfg file is found, write one so an example exists to fill in
+            foundFileOpt.orElseGet(() -> {
+                final File defCfgFile = getDefaultCfgFile();
+                if(!defCfgFile.exists()) { // sanity check
+                    Application.log(SERVICES_CFG_NAME + " not found. Saving default to " + defCfgFile.getAbsolutePath());
+                    try { IOUtil.stringToFile(cfgData, defCfgFile); } catch(final IOException ignored) {}
+                }
+                return null;
+            });
 
             return cfgData.startsWith("<?xml")
                     ? cfgData // Jackson cannot handle this type of xml, so convert to json
@@ -256,7 +266,7 @@ public class ServicesLoader {
                         .replace("<Service>", "{")
                         .replace("</Service>", "},")
                     : cfgData;
-        } catch (IOException e) {
+        } catch (final IOException e) {
             e.printStackTrace();
             Application.exitWithError("Unable to load services configuration");
             return ""; // never get here but keep the compiler happy
@@ -267,18 +277,15 @@ public class ServicesLoader {
         return getConfigurationFile().map(file -> {
             try {
                 final InputStream stream = new FileInputStream(file);
-                Application.log("Loading configuration from " + file);
+                Application.log("Loading configuration from " + file.getAbsolutePath());
                 return stream;
-            } catch (FileNotFoundException ignored) {
+            } catch (final FileNotFoundException ignored) {
                 return null;
             }
         });
     }
-    private static Optional<InputStream> getConfigurationStreamFromJarFile() {
-        return Util.orSupplyNullable(
-            () -> Services.class.getResourceAsStream("/services.yaml"),
-            () -> Services.class.getResourceAsStream("/services.xml")
-        );
+    private static InputStream getConfigurationStreamFromThisJarFile() {
+        return Services.class.getResourceAsStream("/services.yaml");
     }
     public static void setConfigurationPath(Optional<File> path) {
         sourcePath = path;
@@ -286,11 +293,14 @@ public class ServicesLoader {
 
     public static Optional<File> getConfigurationFile() {
         return Util.orSupplyOptional(
-            () -> Optional.of(new File(Configuration.getJarsDir(), SERVICES_CFG_NAME)).filter(File::isFile),
-            () -> sourcePath                                                          .filter(File::isFile),
-            () -> sourcePath.map(f -> new File(f, SERVICES_CFG_NAME))                 .filter(File::isFile),
-            () -> Optional.of(new File(SERVICES_CFG_NAME))                            .filter(File::isFile),
-            () -> Optional.ofNullable(System.getProperty("propFile")).map(File::new)  .filter(File::isFile)
+            () -> Optional.of(getDefaultCfgFile())                                  .filter(File::isFile),
+            () -> sourcePath                                                        .filter(File::isFile),
+            () -> sourcePath.map(f -> new File(f, SERVICES_CFG_NAME))               .filter(File::isFile),
+            () -> Optional.of(new File(SERVICES_CFG_NAME))                          .filter(File::isFile),
+            () -> Optional.ofNullable(System.getProperty("propFile")).map(File::new).filter(File::isFile)
         );
+    }
+    private static File getDefaultCfgFile() {
+        return new File(Configuration.getRootDir(), SERVICES_CFG_NAME);
     }
 }

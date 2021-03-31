@@ -71,7 +71,7 @@ public class ServiceRunner {
             () -> service.getDir(),
             () -> Optional.ofNullable(service.getRestartDir()).map(File::new),
             () -> service.getFileLocation()
-        ).orElseGet(Configuration::getJarsDir);
+        ).orElseGet(Configuration::getRootDir);
     }
 
     private void runExe() {
@@ -112,7 +112,7 @@ public class ServiceRunner {
             jarName = fileLocPath.substring(runDirPath.length()).replaceFirst("^[\\\\/]+", "");
         } else {
             service.logger.error("unknown service jar for " + service.getName());
-            service.logger.error("jar expected in " + Configuration.getJarsDir().getAbsolutePath());
+            service.logger.error("jar expected in " + Configuration.getRootDir().getAbsolutePath());
             service.logger.error("Start with -root <root of jars directory> to set jars dir");
             return;
         }

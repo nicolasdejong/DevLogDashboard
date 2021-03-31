@@ -41,7 +41,7 @@ public class ServicesTest {
         final File tempDir = Files.createTempDirectory("servicesTest").toFile();
         final File foobarDir = new File(tempDir, "foo/bar/");
         final String userDir = System.getProperty("user.dir"); // current dir for new File() calls
-        final File jar = new File(Configuration.getJarsDir(), "test-server-1.23.jar");
+        final File jar = new File(Configuration.getRootDir(), "test-server-1.23.jar");
 
         try {
             foobarDir.mkdirs();

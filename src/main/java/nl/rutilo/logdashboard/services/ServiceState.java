@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import static nl.rutilo.logdashboard.services.Service.LocationType.JAR;
 import static nl.rutilo.logdashboard.services.ServiceState.State.*;
@@ -34,6 +35,14 @@ public class ServiceState implements Comparable {
     private int             logVelocity;
     private String          lastError;
     private LimitedSizeFile outputFile;
+    private boolean         startPatternHasError;
+    private boolean         aboutToStart;
+
+    private static Pattern portPattern = Pattern.compile("(?:started on|initialized with|updating) port[s():]*(?: to)? (\\d+)", Pattern.CASE_INSENSITIVE);
+    private static Pattern defaultStartedPattern = Pattern.compile("(?i)^.*(Started .*? in \\d|Hello from).*$");
+    private        Pattern serviceStartedPattern = null;
+    private        String  serviceStartedPatternText = null;
+
 
     @Override public int compareTo(Object obj) {
         return !(obj instanceof ServiceState) ? -1 : state.compareTo(((ServiceState)obj).state);
@@ -73,9 +82,12 @@ public class ServiceState implements Comparable {
     public long runningOkAgo()   { return System.currentTimeMillis() - timeSinceRunningOk; }
 
     public void aboutToStart() {
+        if(aboutToStart) return; // in case any of the below functions will log, which will lead to an aboutToStart() call
+        aboutToStart = true;
         reset();
         initOutputLog();
         setStarting();
+        aboutToStart = false;
     }
     public void reset() {
         timeStarted = System.currentTimeMillis();
@@ -123,6 +135,7 @@ public class ServiceState implements Comparable {
             state = newState;
             if(newState == RUNNING) timeSinceRunningOk = System.currentTimeMillis();
             if(newState == RUNNING_ERROR || newState == INIT_ERROR) timeLastError = System.currentTimeMillis();
+            if(newState == STARTING) startPatternHasError = false;
             timeLastStateChange = System.currentTimeMillis();
             callChangeListeners();
         }
@@ -136,8 +149,6 @@ public class ServiceState implements Comparable {
         setState(isRunning() || service.getLocationType() != JAR ? RUNNING_ERROR : INIT_ERROR);
     }
     public void setExitError() { setState(EXIT_ERROR, /*noDebounce=*/true); }
-
-    private static Pattern portPattern = Pattern.compile("(?:started on|initialized with|updating) port[s():]*(?: to)? (\\d+)", Pattern.CASE_INSENSITIVE);
 
     protected static Optional<String> getPortFromLine(String line) {
         final Matcher matcher = portPattern.matcher(line);
@@ -155,6 +166,7 @@ public class ServiceState implements Comparable {
     private void initOutputLog() {
         closeOutputLog();
         service.getOutputLogFile().ifPresent(ofile -> {
+            service.log("Output log file: " + ofile.getAbsolutePath());
             synchronized(outputSync) {
                 outputFile = new LimitedSizeFile(ofile, service.getOutputLogFileMaxBytes());
             }
@@ -188,15 +200,30 @@ public class ServiceState implements Comparable {
         if (state == STARTING) {
             getPortFromLine(line).ifPresent(port -> {
                 try {
-                    int oldPort = service.getPort();
+                    final int oldPort = service.getPort();
                     service.setPort(Integer.parseInt(port));
-                    if(oldPort != service.getPort()) callChangeListeners();
-                } catch(final NumberFormatException noNumber) {
-                    noNumber.printStackTrace();
+                    if (oldPort != service.getPort()) callChangeListeners();
+                } catch (final NumberFormatException noNumber) {
                     // don't update port
                 }
             });
-            if (line.matches("(?i)^.*(Started .*? in \\d|Hello from).*$")) setState(RUNNING);
+
+            if(!Util.or(service.getStartedPattern(), "").equals(Util.or(serviceStartedPatternText,""))) {
+                serviceStartedPatternText = service.getStartedPattern();
+                serviceStartedPattern = null;
+                if(serviceStartedPatternText != null) {
+                    try {
+                        serviceStartedPattern = Pattern.compile(service.getStartedPattern());
+                    } catch (final PatternSyntaxException ex) {
+                        if (!startPatternHasError) {
+                            startPatternHasError = true;
+                            service.logError("startPattern has error: " + ex.getMessage());
+                        }
+                    }
+                }
+            }
+            if(serviceStartedPattern == null && defaultStartedPattern.matcher(line).matches()) setState(RUNNING);
+            if(serviceStartedPattern != null && serviceStartedPattern.matcher(line).matches()) setState(RUNNING);
         } else {
             if (line.matches("^(PROCESS FINISHED)")) setState(OFF);
             else

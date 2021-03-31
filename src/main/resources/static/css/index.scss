@@ -27,6 +27,18 @@ $color-w: $color-waiting;
   box-sizing: border-box;
 }
 
+::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, .5);
+  box-shadow: 0 0 1px rgba(255, 255, 255, .5);
+}
+
 body {
   margin: 2px;
   background-color: black;
@@ -125,7 +137,7 @@ body {
 
     .label {
       position: absolute;
-      top: 0; bottom: 2px; left: 0; right: 0;
+      top: 0; bottom: 2px; left: 1px; right: 1px;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -134,6 +146,8 @@ body {
       text-align: center;
 
       sub { font-size: 70%; }
+
+      &.stub { font-style: italic; font-size: 90%; opacity: 0.7; }
     }
     .port {
       position: absolute;
@@ -426,10 +440,13 @@ h2 {
 }
 
 .cfg-error {
-  margin: 0 1em 0 5em;
+  margin: 0 3em 0 5em;
+  border: 2px solid red;
+  padding: .5em;
   background-color: #fee;
   color: #f00;
   overflow: auto;
+  font-size: 150%;
 }
 
 .popup-menu {
@@ -451,6 +468,9 @@ h2 {
     max-width: 80vw;
     max-height: 80vh;
     overflow: auto;
+    label {
+      white-space: nowrap;
+    }
   }
   .header {
     position: relative;

@@ -11,7 +11,7 @@ public class Configuration {
     private static Optional<File> jarsDir = Optional.empty();
     public static void reset() { jarsDir = Optional.empty(); }
 
-    public static File getJarsDir() {
+    public static File getRootDir() {
         if (!jarsDir.isPresent()) {
             final String root = System.getProperty("root");
             final String currentDir = new File(root == null ? "" : root).getAbsolutePath().replace("\\", "/");

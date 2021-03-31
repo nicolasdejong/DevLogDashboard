@@ -92,7 +92,7 @@ class Server {
     return fetch('setFlags?startParallel=' + !!set, {method:'post'});
   }
   static clearLog(service) {
-    if(!service) return;
+    if(!service) return Promise.resolve();
     clearLog();
     return fetch('clearLog', {method:'post', body:service.name})
   }

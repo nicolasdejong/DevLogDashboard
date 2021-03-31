@@ -39,6 +39,13 @@ public final class IOUtil {
         copy(source, bout);
         return bout.toByteArray();
     }
+    public static String asString(InputStream source) {
+        try {
+            return new String(exhaust(source), TEXT_CHARSET);
+        } catch (IOException ignored) {
+            return "";
+        }
+    }
     public static String asString(byte[] data) {
         return new String(data, TEXT_CHARSET);
     }

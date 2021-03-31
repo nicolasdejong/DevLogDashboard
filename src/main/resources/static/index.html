@@ -44,7 +44,7 @@
       });
   </script>
 </head>
-<body class="app-starting">
+<body class="app-starting" >
  <div class="body-content">
   <div class="grid">
     <span class="cells"><!--keep on same line as settings --></span><div class="cell-settings" click.eval="selectService(null)">
@@ -125,25 +125,24 @@
           }
           ${this.upgrading ? '<span class="blinker">UPGRADING to the new version</span>' : ''}
         </div>
-        <div class="cfg-error">${cfgError}</div>
+        <div class="cfg-error" style="${cfgError?'':'display:none;'}">${cfgError}</div>
         <div class="mono-text">     ${introText}
 
         Shows a configured list of services. These services can be:
-         - Started by the server itself. The process output then is analyzed to determine the state.
+         - Started by this server. The process output then is analyzed to determine the state.
+         - Logfile, handled like process output.
          - External connection, tested to be alive. Can be configured to act as watchdog.
-         - Logfile. The contents of a logfile (which may be appended to) will be shown as output.
 
-        Start the server with the -help option to see possible start options.
-        See the built in services.yaml file for configuration options.
+        Start the server with the -help option to see possible command-line options.
 
-        To change the service configuration, find the services.yaml file in the jar and
-        copy it to the directory the jar runs from. That file will be used when available instead of
-        the internal one. The server will update itself when it detects any change in the configuration.
+        The built in services.yaml will be written to disk when no service.yaml is found.
+        See the services.yaml file for configuration documentation.
+        The server will update itself when it detects any change in the service.yaml.
 
         I created this application in my spare-time while on an assignment in 2018 where a team of
-        developers used it (and may still use it) to handle running a few dozen micro-services at
-        development time. Since then I also used it on assignments in other companies. So it seems this
-        functionality is helpful in other environments as well. Therefore I made it available on github.
+        developers used it to handle running a few dozen micro-services at development time.
+        Since then I also it on multiple assignments in more companies. So it seems this
+        functionality is helpful in other environments as well. Therefore, I made it available on github.
 
         Any issues or requests, go to github: <a target="_blank" href="https://github.com/nicolasdejong/DevLogDashboard">https://github.com/nicolasdejong/DevLogDashboard</a>
 
@@ -226,6 +225,20 @@
       </div>
       <div id="history" class="tab mono-text"><h2>History of service states</h2></div>
       <div id="release-notes" class="tab mono-text"><h2>Release Notes</h2>
+        V12/20200624
+        - Added: Default services.yaml will be written if not found
+        - Added: Added -configDoc option to print the default services.yaml including documentation
+        - Added: configure pattern to detect started (startedPattern) which can be set per service
+        - Added: Root dir can now be set in services.yml file
+        - Fixed: Small fixes for unexpected input data
+        - Fixed: Sometimes current datetime was shown instead of build datetime
+        - Fixed: Now calls mkdirs() on log dir instead of crashing.
+        - Fixed: Fix default service load failure
+        - Fixed: In case of configuration (syntax) error, the browser now shows the error also on reload
+        - Fixed: Safari does not support regex positive lookbehind -- updated regexes of line filters
+        - Fixed: Safari fix for tile selection
+        - Fixed: Safari now always shows scroll bars when there is something to scroll
+
         V11/20200302
         - Small changes in preparation to put on github (docs, package names, update location)
         - Added: LogHides hides part of log lines: date, process-id, trace, thread, package (via icon)
@@ -343,7 +356,7 @@
          click.eval="selectService('${name}')"
               title="${state.error ? state.lastError : ''}"
   >
-    <div class="label"><div>${label}</div></div>
+    <div class="label${label.endsWith('Stub')?' stub':''}"><div>${label}</div></div>
     <div class="port ${locationType == 'JAR' && state.state != 'OFF' ? '' : 'hidden'}"><a href="http://localhost:${port}/" target="_blank">${port}</a></div>
     <div class="port ${locationType == 'JAR' && state.state == 'OFF' ? '' : 'hidden'}">${port}</div>
     <div class="port ${locationType == 'JAR' || locationType == 'NONE' ? 'hidden' : ''}"><a href="${location}" target="_blank" title="${location}"}>link</a></div>

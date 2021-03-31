@@ -40,17 +40,21 @@ function updateVariablesIn(node, model, onlyAttributes) {
       .replace(/\${([^}]+)}/g, (match, name) => getValueOf.call(model, name) || '');
   }
 
+  if (!node.originalInnerHTML) {
+    node.originalInnerHTML = node.innerHTML;
+    node.originalAttrs = {};
+    Array.from(node.attributes).forEach(attr => node.originalAttrs[attr.name] = attr.value);
+  }
+
   if(!onlyAttributes) {
-    if (!node.originalInnerHTML) node.originalInnerHTML = node.innerHTML;
     const generatedHtml = replaceVarsOf(node.originalInnerHTML);
     if(node.prevGeneratedHTML !== generatedHtml) node.innerHTML = node.prevGeneratedHTML = generatedHtml;
     //if(node.innerHTML !== newHtml) console.log('node replaced:', newHtml);
   }
 
   Array.from(node.attributes).forEach(attr => {
-    if (attr.originalValue === undefined) attr.originalValue = attr.value;
-    attr.value = replaceVarsOf(attr.originalValue);
-    if (attr.originalValue.includes('starting')) attr.originalValue = attr.originalValue.replace(/starting/,''); // hack :-(
+    attr.value = replaceVarsOf(node.originalAttrs[attr.name]);
+    if (('' + node.originalAttrs[attr.name]).includes('starting')) node.originalAttrs[attr.name] = node.originalAttrs[attr.name].replace(/starting/,''); // hack :-(
   });
 }
 function periodicallyUpdateNode(node, model, onlyAttributes) {
@@ -134,6 +138,10 @@ function timeAgo(ms) {
   return mins + 'm' + secs + 's';
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout( resolve, ms));
+}
+
 function addMouseHandlers(target, handlers) { //handlers { onMouseDown, onMouseUp, onMouseMove }
   const node = target || window;
   const listeners = {};
@@ -171,4 +179,22 @@ function addMouseHandlers(target, handlers) { //handlers { onMouseDown, onMouseU
   if(handlers.onMouseMove && !handlers.onMouseDown) addEventListener(window, 'mousemove', onMouseMove);
 
   return listeners;
+}
+
+// Use this function for the replace function in String.replace(..., f) to get info instead of vararg
+function replaceFunc(f) {
+  return (...args) => { // args are [match, group1, group2, ..., offset, whole string, (some browsers:) named groups obj]
+    const info = { // replace function will be called with this object
+      match: args[0],    // full matching string
+      groups: [args[0]], // matched groups per index and, if available, by name
+      offset: -1,        // offset of match in all
+      all: '',           // full text in which match was found
+    };
+    let i=1;
+    while(i<args.length && 'number' !== typeof args[i]) info.groups.push(args[i++]);
+    info.offset = args[i];
+    info.all = args[i+1];
+    Object.entries(args[i+2] || {}).forEach(([k,v]) => info.groups[k] = v);
+    return f.call(null, info);
+  };
 }

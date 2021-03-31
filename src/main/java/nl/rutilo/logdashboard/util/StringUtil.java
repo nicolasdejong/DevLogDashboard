@@ -111,6 +111,10 @@ public class StringUtil {
     public static List<String> getStringParts(String input, String regex) {
         return getStringParts(input, Pattern.compile(regex));
     }
+    public static Optional<String> getStringPart(String input, String regex) {
+        final List<String> parts = getStringParts(input, regex);
+        return parts.isEmpty() ? Optional.empty() : Optional.of(parts.get(0));
+    }
 
     /**
      * Split a command line into its separate parts.

@@ -18,10 +18,10 @@ function initLogs() {
 }
 
 function clearLog() { messagesPanel.innerHTML = ''; clearSideline(); }
-function clearLogOnServer() { Server.clearLog(getSelectedService()); }
+function clearLogOnServer() { return Server.clearLog(getSelectedService()); }
 
 function updateLog(service) {
-  Server.sendOutputOfService(service).then(output => {
+  return Server.sendOutputOfService(service).then(output => {
     output.log.forEach(lineInfo => addToLog(lineInfo.type, lineInfo.text));
     service.state.logVelocity = output.logVelocity;
     setTimeout(() => setLogScrollPosFromSaved(service), 400);
@@ -145,12 +145,15 @@ function appendDivToLog(div) {
   logScroll(atBottom ? LARGE_YPOS : messagesPanel.scrollTop);
 }
 
-const hides = {
-  Date: /(^|(?<=<br>))\s*[\d-]*20\d\d(-[\d-]+)?\s*/mg,
-  'Process Id': /\d{2,7} (?=--- )/mg,
-  Trace: /\[traceid=[^\]]+]/mg,
-  Thread: /(?<=--- )\[[^\]]+]/mg,
-  Package: /\s\.?\w\.(\w+\.)+[\w$]+\s+:/mg,
+const hides = { // Damn. Safari doesn't support lookbehinds. Named groups isn't working well over browsers either.
+                // So: first group, if any, should be included in the replacement!
+  date:           /(^|(?:<br>))\s*[\d-]*20\d\d(?:-[\d-]+)?\s*/mg,
+  'process id':   /\d{2,7} (?=--- )/mg,
+  trace:          /\s\[traceid=[^\]]+]/mg,
+  thread:         /(--- )\[[^\]]+]/mg,
+  package:        /\s\.?\w\.(?:\w+\.)+[\w$]+\s+:/mg, // expect at least two dots (excluding dot on 0) prevent false positives
+  'first braced': /((?:^|(?:<br>))[^[]+)\s\[[^\]]+\]/mg,
+  'empty lines':  /(<br>)(\s*<br>)+/g,
 };
 let hidesToUse = localStorage.hidesToUse ? JSON.parse(localStorage.hidesToUse) : [];
 
@@ -161,7 +164,7 @@ function updateHides(msgDiv) {
   }
   if(hidesToUse.length) {
     let html = msgDiv.originalHTML;
-    hidesToUse.map(h => hides[h]).forEach(hide => html = html.replace(hide, ''));
+    hidesToUse.map(h => hides[h]).forEach(hide => html = html.replace(hide, replaceFunc(info => info.groups[1] || '')));
     msgDiv.innerHTML = html;
   } else {
     msgDiv.innerHTML = msgDiv.originalHTML;

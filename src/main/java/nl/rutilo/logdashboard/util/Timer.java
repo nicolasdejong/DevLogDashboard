@@ -16,7 +16,11 @@ public class Timer {
         CallbackTask(String id, Runnable r) { this.id=id; callback=r; }
         @Override public void run() {
             clear(id);
-            callback.run();
+            try {
+                callback.run();
+            } catch(final Throwable t) {
+                t.printStackTrace();
+            }
         }
     }
 

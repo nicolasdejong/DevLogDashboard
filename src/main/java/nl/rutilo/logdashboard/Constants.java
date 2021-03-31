@@ -1,6 +1,11 @@
 package nl.rutilo.logdashboard;
 
+import nl.rutilo.logdashboard.services.Services;
+import nl.rutilo.logdashboard.util.IOUtil;
+import nl.rutilo.logdashboard.util.StringUtil;
+
 import java.io.File;
+import java.io.IOException;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 
@@ -12,6 +17,8 @@ public class Constants {
 
     public static final boolean IN_DEV_ENV                 = JAR_FILE.getName().endsWith("classes");
     public static final String APP_NAME                    = "dev-log-dashboard";
+    public static final String APP_VERSION;
+    public static final String APP_RELEASE_DATE;
     public static final long   APP_START_TIME              = System.currentTimeMillis();
     public static final int    DEFAULT_PORT                = 8099;
     public static final String DOWNLOAD_PAGE_BASE_URL      = "https://www.rutilo.nl/dld/";
@@ -41,5 +48,11 @@ public class Constants {
 
     static {
         LOCAL_DATA_DIR.mkdirs();
+
+        final String indexHtml = IOUtil.asString(Services.class.getResourceAsStream("/static/index.html"));
+        final String[] vd = StringUtil.getStringPart(indexHtml, "(?s)id=\"release-notes\".*?V([^/]+/[\\w\\?]+).*?\n").orElse("?/?").split("/");
+
+        APP_VERSION      = vd[0];
+        APP_RELEASE_DATE = vd[1];
     }
 }
